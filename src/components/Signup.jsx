@@ -1,233 +1,220 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     phoneNumber: "",
+    password: "",
   });
 
-  const [errors, setErrors] = useState({
-    usernameError: "",
-    emailError: "",
-    passwordError: "",
-    confirmPasswordError: "",
-    phoneNumberError: "",
-  });
-
-  const [submitted, setSubmitted] = useState(false);
-
-  const usernameRegex = /^[a-zA-Z0-9_]{3,15}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  const phoneRegex = /^[6-9]\d{9}$/;
+  const [countryCode, setCountryCode] = useState("+91");
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const navigate = useNavigate();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
 
-    switch (name) {
-      case "username":
-        setErrors({
-          ...errors,
-          usernameError: !usernameRegex.test(value)
-            ? "Username must be 3-15 characters, letters, numbers, or underscores."
-            : "",
-        });
-        break;
-      case "email":
-        setErrors({
-          ...errors,
-          emailError: !emailRegex.test(value) ? "Enter a valid email address." : "",
-        });
-        break;
-      case "password":
-        setErrors({
-          ...errors,
-          passwordError: !passwordRegex.test(value)
-            ? "Password must be at least 8 characters, with uppercase, lowercase, number, and special character."
-            : "",
-        });
-        break;
-      case "confirmPassword":
-        setErrors({
-          ...errors,
-          confirmPasswordError:
-            value !== formData.password ? "Passwords do not match." : "",
-        });
-        break;
-      case "phoneNumber":
-        setErrors({
-          ...errors,
-          phoneNumberError: !phoneRegex.test(value)
-            ? "Enter a valid 10-digit phone number starting with 6-9."
-            : "",
-        });
-        break;
-      default:
-        break;
-    }
+  const handleCountryCodeChange = (e) => {
+    setCountryCode(e.target.value);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError("");
+    setSuccessMessage("");
 
-    const isFormValid =
-      !errors.usernameError &&
-      !errors.emailError &&
-      !errors.passwordError &&
-      !errors.confirmPasswordError &&
-      !errors.phoneNumberError &&
-      formData.username &&
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword &&
-      formData.phoneNumber;
-
-    if (isFormValid) {
-      alert("Signup successful!");
-    } else {
-      alert("Please fix the errors before submitting.");
-    }
+    // Submit data to the API
+    fetch("http://localhost:8080/api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: formData.username,
+        email: formData.email,
+        phoneNumber: `${countryCode}${formData.phoneNumber}`,
+        password: formData.password,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then((text) => {
+            try {
+              const data = JSON.parse(text);
+              throw new Error(data.message || "Signup failed");
+            } catch {
+              throw new Error(text || "An unexpected error occurred");
+            }
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setSuccessMessage("Signup successful! Redirecting...");
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      })
+      .catch((error) => {
+        setError(error.message);
+      });
   };
 
   return (
-    <div style={styles.formPage}>
-      <div style={styles.formContainer}>
-        <h2>Signup</h2>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleInputChange}
-            style={styles.input}
-            required
-          />
-          {submitted && errors.usernameError && (
-            <p style={styles.error}>{errors.usernameError}</p>
-          )}
-
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleInputChange}
-            style={styles.input}
-            required
-          />
-          {submitted && errors.emailError && (
-            <p style={styles.error}>{errors.emailError}</p>
-          )}
-
-          <input
-            type="text"
-            name="phoneNumber"
-            placeholder="Phone Number"
-            value={formData.phoneNumber}
-            onChange={handleInputChange}
-            style={styles.input}
-            required
-          />
-          {submitted && errors.phoneNumberError && (
-            <p style={styles.error}>{errors.phoneNumberError}</p>
-          )}
-
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleInputChange}
-            style={styles.input}
-            required
-          />
-          {submitted && errors.passwordError && (
-            <p style={styles.error}>{errors.passwordError}</p>
-          )}
-
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleInputChange}
-            style={styles.input}
-            required
-          />
-          {submitted && errors.confirmPasswordError && (
-            <p style={styles.error}>{errors.confirmPasswordError}</p>
-          )}
-
-          <button type="submit" style={styles.button}>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Signup</h1>
+        <form onSubmit={handleSubmit}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Username</label>
+            <input
+              type="text"
+              name="username"
+              placeholder="Enter your username"
+              value={formData.username}
+              onChange={handleInputChange}
+              style={styles.input}
+              required
+            />
+          </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Email</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleInputChange}
+              style={styles.input}
+              required
+            />
+          </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Phone Number</label>
+            <div style={styles.phoneContainer}>
+              <select
+                value={countryCode}
+                onChange={handleCountryCodeChange}
+                style={styles.select}
+              >
+                <option value="+91">+91 (IN)</option>
+                <option value="+1">+1 (US)</option>
+                <option value="+44">+44 (UK)</option>
+                <option value="+61">+61 (AU)</option>
+                <option value="+81">+81 (JP)</option>
+              </select>
+              <input
+                type="text"
+                name="phoneNumber"
+                placeholder="Phone Number"
+                value={formData.phoneNumber}
+                onChange={handleInputChange}
+                style={styles.input}
+                maxLength="10"
+                required
+              />
+            </div>
+          </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Password</label>
+            <input
+              type="password"
+              name="password"
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleInputChange}
+              style={styles.input}
+              required
+            />
+          </div>
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
+          <button
+            type="submit"
+            style={styles.button}
+            onMouseOver={(e) => (e.target.style.backgroundColor = "#ff6f61")}
+            onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
+          >
             Signup
           </button>
         </form>
-        <p>
-          Already have an account?{" "}
-          <Link to="/login" style={styles.link}>
-            Login here
-          </Link>
-        </p>
       </div>
     </div>
   );
 };
 
+export default Signup;
+
+// Inline CSS styles
 const styles = {
-  formPage: {
+  container: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     minHeight: "100vh",
-    backgroundColor: "#f4f4f9",
+    backgroundColor: "#f8f9fa",
+    padding: "40px",
   },
-  formContainer: {
-    background: "#fff",
+  card: {
+    backgroundColor: "#fff",
     padding: "30px",
-    borderRadius: "8px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    maxWidth: "400px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
     width: "100%",
+    maxWidth: "400px",
+    textAlign: "center",
   },
-  form: {
-    display: "flex",
-    flexDirection: "column",
+  title: {
+    fontSize: "24px",
+    fontWeight: "bold",
+    marginBottom: "20px",
+    color: "#333",
+  },
+  inputGroup: {
+    marginBottom: "15px",
+    textAlign: "left",
+  },
+  label: {
+    display: "block",
+    marginBottom: "5px",
+    fontSize: "14px",
+    fontWeight: "bold",
+    color: "#555",
   },
   input: {
+    width: "100%",
     padding: "10px",
-    margin: "10px 0",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+    fontSize: "14px",
+    boxSizing: "border-box",
+  },
+  phoneContainer: {
+    display: "flex",
+    alignItems: "center",
+  },
+  select: {
+    padding: "10px",
+    marginRight: "10px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+    fontSize: "14px",
+    cursor: "pointer",
   },
   button: {
+    width: "100%",
     padding: "10px",
+    borderRadius: "5px",
+    backgroundColor: "#007bff",
+    color: "#fff",
     border: "none",
-    borderRadius: "4px",
-    background: "#5a67d8",
-    color: "white",
-    fontWeight: "bold",
+    fontSize: "16px",
     cursor: "pointer",
-    marginTop: "10px",
-  },
-  buttonHover: {
-    background: "#434190",
-  },
-  error: {
-    color: "red",
-    fontSize: "12px",
-  },
-  link: {
-    color: "#5a67d8",
-    textDecoration: "none",
-    fontWeight: "bold",
-  },
+    transition: "background-color 0.3s ease, transform 0.3s ease",
+},
 };
-
-export default Signup;
